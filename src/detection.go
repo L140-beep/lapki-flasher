@@ -15,6 +15,8 @@ import (
 type Detector struct {
 	// список доступных для прошивки устройств
 	boards         map[string]*Device
+	detectedBoards map[string]*Device
+	manualProfiles map[string]int
 	boardTemplates []BoardTemplate
 	mu             sync.Mutex
 
@@ -34,6 +36,7 @@ type Detector struct {
 func NewDetector() *Detector {
 	var d Detector
 	d.boards = make(map[string]*Device)
+	d.manualProfiles = make(map[string]int)
 	// добавление фальшивых плат
 	d.generateFakeBoards()
 	d.initDeviceListErrorHandle(deviceListPath)
@@ -62,7 +65,8 @@ func (d *Detector) Update() (
 	d.mu.Lock()
 	defer d.mu.Unlock()
 
-	detectedBoards = detectBoards(d.boardTemplates)
+	detectedBoards = detectAllBoards(d.boardTemplates)
+	detectedBoards = d.withBoardProfiles(detectedBoards)
 
 	// добавление фальшивых плат к действительно обнаруженным
 	if fakeBoardsNum > 0 || fakeMSNum > 0 {
@@ -136,6 +140,7 @@ func (d *Detector) Update() (
 			}
 			d.boardActions.PushBack(ActionWithBoard{board: board, boardID: deviceID, action: DELETE})
 			delete(d.boards, deviceID)
+			delete(d.manualProfiles, deviceID)
 			delete(d.missingSince, deviceID)
 		}
 	}
@@ -188,6 +193,8 @@ func (d *Detector) DeleteBoard(ID string) {
 	d.mu.Lock()
 	defer d.mu.Unlock()
 	delete(d.boards, ID)
+	delete(d.manualProfiles, ID)
+	delete(d.detectedBoards, ID)
 }
 
 // получить количество, подключённых плат

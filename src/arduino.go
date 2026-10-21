@@ -8,12 +8,15 @@ import (
 )
 
 type Arduino struct {
-	controller   string
-	programmer   string
-	serialID     string
-	portName     string
-	bootloaderID int
-	ardOS        ArduinoOS // структура с данными для поиска устройства на определённой ОС
+	controller       string
+	programmer       string
+	serialID         string
+	portName         string
+	bootloaderID     int
+	manualPort       bool
+	profileID        int
+	manuallyAssigned bool
+	ardOS            ArduinoOS // структура с данными для поиска устройства на определённой ОС
 }
 
 func NewArduinoFromTemp(temp BoardTemplate, portName string, ardOS ArduinoOS, serialID string) *Arduino {
@@ -28,6 +31,7 @@ func NewArduinoFromTemp(temp BoardTemplate, portName string, ardOS ArduinoOS, se
 			serialID:     serialID,
 			portName:     portName,
 			ardOS:        ardOS,
+			profileID:    temp.ID,
 		}
 	}
 	return &Arduino{
@@ -37,17 +41,21 @@ func NewArduinoFromTemp(temp BoardTemplate, portName string, ardOS ArduinoOS, se
 		serialID:     serialID,
 		portName:     portName,
 		ardOS:        ardOS,
+		profileID:    temp.ID,
 	}
 }
 
 func CopyArduino(board *Arduino) *Arduino {
 	return &Arduino{
-		controller:   board.controller,
-		programmer:   board.programmer,
-		bootloaderID: board.bootloaderID,
-		serialID:     board.serialID,
-		portName:     board.portName,
-		ardOS:        board.ardOS,
+		controller:       board.controller,
+		programmer:       board.programmer,
+		bootloaderID:     board.bootloaderID,
+		serialID:         board.serialID,
+		portName:         board.portName,
+		ardOS:            board.ardOS,
+		manualPort:       board.manualPort,
+		profileID:        board.profileID,
+		manuallyAssigned: board.manuallyAssigned,
 	}
 }
 
@@ -130,12 +138,14 @@ func (board *Arduino) GetWebMessageType() string {
 
 func (board *Arduino) GetWebMessage(name string, deviceID string) any {
 	return DeviceMessage{
-		ID:         deviceID,
-		Name:       name,
-		Controller: board.controller,
-		Programmer: board.programmer,
-		SerialID:   board.serialID,
-		PortName:   board.portName,
+		ID:               deviceID,
+		Name:             name,
+		Controller:       board.controller,
+		Programmer:       board.programmer,
+		SerialID:         board.serialID,
+		PortName:         board.portName,
+		ProfileID:        board.profileID,
+		ManuallyAssigned: board.manuallyAssigned,
 	}
 }
 

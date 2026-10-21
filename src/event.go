@@ -23,12 +23,14 @@ type Event struct {
 }
 
 type DeviceMessage struct {
-	ID         string `json:"deviceID"`
-	Name       string `json:"name,omitempty"`
-	Controller string `json:"controller,omitempty"`
-	Programmer string `json:"programmer,omitempty"`
-	PortName   string `json:"portName,omitempty"`
-	SerialID   string `json:"serialID,omitempty"`
+	ProfileID        int    `json:"profileID"`
+	ManuallyAssigned bool   `json:"manuallyAssigned"`
+	ID               string `json:"deviceID"`
+	Name             string `json:"name,omitempty"`
+	Controller       string `json:"controller,omitempty"`
+	Programmer       string `json:"programmer,omitempty"`
+	PortName         string `json:"portName,omitempty"`
+	SerialID         string `json:"serialID,omitempty"`
 }
 
 type MSDeviceMessage struct {
@@ -385,6 +387,9 @@ func FlashStart(event Event, c *WebSocketConnection) error {
 		// не нужно использовать sync функции внутри блока
 		dev.Mu.Lock()
 		defer dev.Mu.Unlock()
+		if _, unknown := dev.Board.(*UnknownPort); unknown {
+			return ErrNotSupported
+		}
 		updated := dev.Board.Update()
 		if updated {
 			if dev.Board.IsConnected() {

@@ -251,6 +251,9 @@ func rebootPort(portName string) (err error) {
 }
 
 func (board *Arduino) Update() bool {
+	if board.manualPort {
+		return updateManualPort(&board.portName)
+	}
 	if hasFound(board.ardOS.deviceID, board.hasSerial(), board.portName) {
 		return false
 	}

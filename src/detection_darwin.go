@@ -225,6 +225,9 @@ func collectMSBoardInfo(reg IOREG, ports map[string]struct{}) (sessionID int64) 
 }
 
 func (board *Arduino) Update() bool {
+	if board.manualPort {
+		return updateManualPort(&board.portName)
+	}
 	cmd := exec.Command("ioreg", "-r", "-c", "IOUSBHostDevice", "-l", "-a")
 	plistData, err := cmd.CombinedOutput()
 	if err != nil {

@@ -47,6 +47,8 @@ func (m *WebSocketManager) hasMultipleConnections() bool {
 // инициализация обработчиков событий
 func (m *WebSocketManager) setupEventHandlers() {
 	m.handlers[GetListMsg] = GetList
+	m.handlers["get-board-profiles"] = GetBoardProfiles
+	m.handlers["set-board-profile"] = SetBoardProfile
 	m.handlers[FlashStartMsg] = FlashStart
 	m.handlers[MSBinStartMsg] = FlashStart
 	m.handlers[FlashBinaryBlockMsg] = FlashBinaryBlock
