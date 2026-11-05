@@ -69,8 +69,39 @@ func detectAllBoards(templates []BoardTemplate) map[string]*Device {
 	for _, detail := range details {
 		metadata[serialPortKey(detail.Name)] = detail
 	}
-	addUnknownPorts(boards, ports, metadata)
+	addUnknownPorts(boards, filterBluetoothPorts(ports, metadata, bluetoothPortNames()), metadata)
 	return boards
+}
+
+// Filter by OS identity as well as descriptive metadata. Non-USB serial ports
+// without metadata remain available for manual board selection.
+func filterBluetoothPorts(ports []string, details map[string]*enumerator.PortDetails, excluded map[string]bool) []string {
+	filtered := make([]string, 0, len(ports))
+	for _, port := range ports {
+		name := strings.ToLower(serialPortKey(port))
+		if excluded[strings.ToUpper(port)] ||
+			strings.HasPrefix(name, "/dev/rfcomm") ||
+			strings.HasPrefix(name, "/dev/tty.bluetooth") {
+			continue
+		}
+		if detail := details[serialPortKey(port)]; detail != nil && !detail.IsUSB &&
+			strings.Contains(strings.ToLower(detail.Product), "bluetooth") {
+			continue
+		}
+		filtered = append(filtered, port)
+	}
+	return filtered
+}
+
+// Windows supplies both kernel device names and PnP interface paths. Match
+// identities rather than translated FriendlyName strings.
+func isBluetoothDevicePath(path string) bool {
+	path = strings.ToUpper(path)
+	return strings.HasPrefix(path, `\DEVICE\BTHMODEM`) ||
+		strings.HasPrefix(path, `BTHENUM\`) ||
+		strings.HasPrefix(path, `BTHMODEM\`) ||
+		strings.HasPrefix(path, `\\?\BTHENUM#`) ||
+		strings.HasPrefix(path, `\\?\BTHMODEM#`)
 }
 
 // macOS exposes tty.* and cu.* aliases for the same physical serial port.

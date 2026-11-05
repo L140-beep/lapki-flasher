@@ -231,3 +231,43 @@ func TestUnknownPortFlashStartIsRejectedBeforeUpload(t *testing.T) {
 		t.Fatal("unknown port accepted for upload", err)
 	}
 }
+
+func TestBluetoothDeviceIdentities(t *testing.T) {
+	for _, path := range []string{
+		`\Device\BthModem0`,
+		`\device\bthmodem12`,
+		`BTHENUM\{00001101-0000-1000-8000-00805F9B34FB}_LOCALMFG&0000\1`,
+		`\\?\BTHENUM#{00001101-0000-1000-8000-00805F9B34FB}#1#{guid}`,
+		`\\?\bthmodem#1#{guid}`,
+		`BTHMODEM\1`,
+	} {
+		if !isBluetoothDevicePath(path) {
+			t.Errorf("missed Bluetooth identity %q", path)
+		}
+	}
+	for _, path := range []string{"COM5", `\Device\Serial0`, `USB\VID_1A86&PID_7523\1`, "", `USB\Bluetooth-board`} {
+		if isBluetoothDevicePath(path) {
+			t.Errorf("serial device incorrectly identified as Bluetooth: %q", path)
+		}
+	}
+}
+
+func TestBluetoothPortsAreExcludedWithoutHidingWiredPorts(t *testing.T) {
+	ports := []string{"COM1", "COM2", "COM3", "COM4", "COM5", "/dev/rfcomm0", "/dev/tty.Bluetooth-Incoming-Port", "/dev/cu.Bluetooth-Incoming-Port", "/dev/ttyUSB0", "/dev/cu.usbserial"}
+	metadata := map[string]*enumerator.PortDetails{
+		"COM2": {Product: "Standard Serial over BLUETOOTH link (COM2)"},
+		// A USB-connected board may itself have Bluetooth in its product name.
+		"COM3": {IsUSB: true, Product: "USB Bluetooth development board"},
+	}
+	filtered := filterBluetoothPorts(ports, metadata, map[string]bool{"COM4": true, "COM5": true})
+	boards := make(map[string]*Device)
+	addUnknownPorts(boards, filtered, metadata)
+	if len(boards) != 4 {
+		t.Fatalf("unexpected ports after Bluetooth filter: %v", filtered)
+	}
+	for _, port := range []string{"COM1", "COM3", "/dev/ttyUSB0", "/dev/cu.usbserial"} {
+		if boards["serial:"+port] == nil {
+			t.Errorf("wired port hidden: %s", port)
+		}
+	}
+}
