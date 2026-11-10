@@ -1,0 +1,17 @@
+{
+  "address": "localhost:8080",
+  "msgSize": 1024,
+  "fileSize": 2097152,
+  "thread": 3,
+  "listCooldown": 2,
+  "updateList": 15,
+  "deviceDisconnectGrace": 1,
+  "verbose": false,
+  "alwaysUpdate": false,
+  "stub": 0,
+  "stubms": 0,
+  "avrdudePath": "avrdude",
+  "configPath": "",
+  "deviceListPath": "",
+  "blgMbUploaderPath": "blg-mb/cyberbear-loader"
+}

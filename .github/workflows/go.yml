@@ -12,17 +12,25 @@ on:
 jobs:
 
   linux-windows-build:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
+    container: ubuntu:20.04
     steps:
     - uses: actions/checkout@v4
+
+    - name: Install build dependencies
+      run: |
+        apt-get update
+        apt-get install -y --no-install-recommends \
+          ca-certificates \
+          build-essential \
+          pkg-config \
+          libusb-1.0-0-dev
+        update-ca-certificates
 
     - name: Set up Go
       uses: actions/setup-go@v4
       with:
         go-version: '1.24.0'
-
-    - name: Set up libusb
-      run: sudo apt-get install libusb-1.0-0-dev
 
     - name: Build
       run: go build -C src && GOOS=windows GOARCH=amd64 go build -C src

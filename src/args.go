@@ -53,15 +53,26 @@ var configPath string
 // путь к файлу со списком устройств (будет использован вместо стандартного списка)
 var deviceListPath string
 
+// путь к файлу с настройками сервера (если пустой, используется встроенный settings.json)
+var settingsPath string
+
 // путь к программе для прошивки кибермишки
 var blgMbUploaderPath string
 
-// чтение флагов и происвоение им стандартных значений
+// TODO: генерация аргументов коммандной строки из json файла
+/*
+чтение флагов и происвоение им стандартных значений.
+
+Значения, указанные здесь, являются запасными: если параметр не указан ни в
+командной строке, ни в settings.json, используется значение из регистрации флага.
+Приоритет параметров: командная строка > settings.json (settingsPath) > встроенный settings.json.
+*/
 func setArgs() {
 	flag.StringVar(&webAddress, "address", "localhost:8080", "адресс для подключения")
 	flag.StringVar(&avrdudePath, "avrdudePath", "avrdude", "путь к avrdude, используется системный путь по-умолчанию")
 	flag.StringVar(&configPath, "configPath", "", "путь к файлу конфигурации avrdude")
 	flag.StringVar(&deviceListPath, "deviceListPath", "", "путь к JSON-файлу со списком устройств. Если прописан, то заменяет стандартный список устройств, при условии, что не возникнет ошибок, связанных с чтением и открытием JSON-файла, иначе используется стандартный список устройств (по-умолчанию пустая строка, означающая, что будет используется, встроенный в загрузчик список)")
+	flag.StringVar(&settingsPath, "settingsPath", "", "путь к JSON-файлу с настройками сервера. Если прописан, то заменяет встроенный settings.json, при условии, что не возникнет ошибок, связанных с чтением и открытием JSON-файла, иначе используются встроенные настройки (по-умолчанию пустая строка, означающая, что будет использован встроенный в загрузчик settings.json). Параметры, явно указанные в командной строке, имеют приоритет над значениями из файла")
 	flag.StringVar(&blgMbUploaderPath, "blgMbUploaderPath", "blg-mb/cyberbear-loader", "путь к программе для прошивки кибермишки")
 	flag.IntVar(&maxMsgSize, "msgSize", 1024, "максмальный размер одного сообщения, передаваемого через веб-сокеты (в байтах)")
 	flag.IntVar(&maxFileSize, "fileSize", 2*1024*1024, "максимальный размер файла, загружаемого на сервер (в байтах)")
@@ -74,6 +85,20 @@ func setArgs() {
 	updateListTimeSeconds := flag.Int("updateList", 15, "количество секунд между автоматическими обновлениями, не может быть меньше единицы, если получено значение меньше единицы, то оно заменяется на 1")
 	disconnectGraceSeconds := flag.Int("deviceDisconnectGrace", 1, "время (в секундах), в течение которого временно исчезнувшее USB-устройство не удаляется из списка; 0 отключает задержку")
 	flag.Parse()
+
+	// параметры, явно переданные через командную строку, имеют приоритет над settings.json
+	setFlags := make(map[string]bool)
+	flag.Visit(func(f *flag.Flag) {
+		setFlags[f.Name] = true
+	})
+	settings, err := loadSettings(settingsPath)
+	if err != nil {
+		// ошибка чтения или разбора настроек не останавливает сервер: используются
+		// значения по-умолчанию и параметры командной строки
+		log.Printf("Не удалось загрузить настройки, используются значения по-умолчанию и параметры командной строки: %v", err)
+	}
+	applySettings(settings, setFlags, getListCooldownSeconds, updateListTimeSeconds, disconnectGraceSeconds)
+
 	if fakeBoardsNum < 0 {
 		fakeBoardsNum = 0
 	}
@@ -108,7 +133,8 @@ func printArgsDesc() {
 	configPathStr := fmt.Sprintf("путь к файлу конфигурации avrdude: %s", configPath)
 	deviceListPathStr := fmt.Sprintf("путь к файлу со списком устройств (если пусто, то используется встроенный список): %s", deviceListPath)
 	blgMbUploaderPathStr := fmt.Sprintf("путь к программе для прошивки кибермишки: %s", blgMbUploaderPath)
-	log.Printf("Модуль загрузчика запущен со следующими параметрами:\n %s\n %s\n %s\n %s\n %s\n %s\n %s\n %s\n %s\n %s\n %s\n %s\n %s\n %s\n %s\n",
+	settingsPathStr := fmt.Sprintf("путь к файлу с настройками сервера (если пусто, то используется встроенный settings.json): %s", settingsPath)
+	log.Printf("Модуль загрузчика запущен со следующими параметрами:\n %s\n %s\n %s\n %s\n %s\n %s\n %s\n %s\n %s\n %s\n %s\n %s\n %s\n %s\n %s\n %s\n",
 		webAddressStr,
 		maxFileSizeStr,
 		maxMsgSizeStr,
@@ -124,5 +150,6 @@ func printArgsDesc() {
 		configPathStr,
 		deviceListPathStr,
 		blgMbUploaderPathStr,
+		settingsPathStr,
 	)
 }
